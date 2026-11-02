@@ -11,6 +11,30 @@ from ipaddress import ip_address
 REPORTS = Path(__file__).resolve().parents[2] / "reports"
 
 
+SERVICE_HINTS = {
+    21: "FTP",
+    22: "SSH",
+    25: "SMTP",
+    53: "DNS",
+    80: "HTTP",
+    110: "POP3",
+    143: "IMAP",
+    443: "HTTPS",
+    445: "SMB",
+    3306: "MySQL",
+    5432: "PostgreSQL",
+    6379: "Redis",
+    8000: "HTTP alternativo",
+    8001: "HTTP alternativo",
+    8080: "HTTP alternativo",
+    8443: "HTTPS alternativo",
+}
+
+
+def identify_service(port: int) -> str:
+    return SERVICE_HINTS.get(port, "Desconhecido")
+
+
 def check_ports(target: str, ports: list[int]) -> dict:
     address = ip_address(target)
     if not address.is_loopback or address.version != 4:
@@ -32,7 +56,11 @@ def check_ports(target: str, ports: list[int]) -> dict:
         except OSError:
             status = "error"
 
-        results.append({"port": port, "status": status})
+        results.append({
+            "port": port,
+            "status": status,
+            "service_hint": identify_service(port),
+        })
 
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),

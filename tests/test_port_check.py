@@ -22,6 +22,13 @@ class TestPortCheck(unittest.TestCase):
         with self.assertRaises(ValueError):
             check_ports("127.0.0.1", [65536])
 
+    def test_identifies_common_service(self):
+        from src.recon.port_check import identify_service
+
+        self.assertEqual(identify_service(22), "SSH")
+        self.assertEqual(identify_service(443), "HTTPS")
+        self.assertEqual(identify_service(9999), "Desconhecido")
+
     def test_detects_open_port(self):
         with patch("src.recon.port_check.socket.socket") as mock_socket:
             mock_socket.return_value.__enter__.return_value.connect_ex.return_value = 0
