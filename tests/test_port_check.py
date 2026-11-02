@@ -10,6 +10,10 @@ class TestPortCheck(unittest.TestCase):
         with self.assertRaises(ValueError):
             check_ports("8.8.8.8", [53])
 
+    def test_rejects_ipv6_loopback(self):
+        with self.assertRaises(ValueError):
+            check_ports("::1", [80])
+
     def test_rejects_invalid_port_zero(self):
         with self.assertRaises(ValueError):
             check_ports("127.0.0.1", [0])

@@ -13,8 +13,10 @@ REPORTS = Path(__file__).resolve().parents[2] / "reports"
 
 def check_ports(target: str, ports: list[int]) -> dict:
     address = ip_address(target)
-    if not address.is_loopback:
-        raise ValueError("Escopo permitido nesta versão: somente loopback.")
+    if not address.is_loopback or address.version != 4:
+        raise ValueError(
+            "Escopo permitido nesta versão: somente loopback IPv4."
+        )
 
     results = []
     for port in ports:
