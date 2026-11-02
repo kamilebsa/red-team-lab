@@ -10,7 +10,6 @@ from ipaddress import ip_address
 
 REPORTS = Path(__file__).resolve().parents[2] / "reports"
 
-
 SERVICE_HINTS = {
     21: "FTP",
     22: "SSH",
@@ -35,6 +34,48 @@ def identify_service(port: int) -> str:
     return SERVICE_HINTS.get(port, "Desconhecido")
 
 
+def identify_http(target: str, port: int) -> dict:
+    """Obtém informações HTTP básicas somente no loopback IPv4."""
+    result = {
+        "http_status": None,
+        "server": None,
+        "http_error": None,
+    }
+
+    if target != "127.0.0.1":
+        return result
+
+    request = (
+        f"HEAD / HTTP/1.0\r\n"
+        f"Host: {target}\r\n"
+        f"Connection: close\r\n\r\n"
+    ).encode("ascii")
+
+    try:
+        with socket.create_connection((target, port), timeout=1) as sock:
+            sock.sendall(request)
+            response = sock.recv(4096).decode("iso-8859-1", errors="replace")
+
+        lines = response.splitlines()
+        if lines:
+            parts = lines[0].split()
+            if len(parts) >= 2 and parts[0].startswith("HTTP/"):
+                result["http_status"] = parts[1]
+
+        for line in lines[1:]:
+            if line.lower().startswith("server:"):
+                result["server"] = line.split(":", 1)[1].strip()
+                break
+
+        if result["http_status"] is None:
+            result["http_error"] = "Resposta HTTP não reconhecida"
+
+    except (OSError, UnicodeError) as exc:
+        result["http_error"] = type(exc).__name__
+
+    return result
+
+
 def check_ports(target: str, ports: list[int]) -> dict:
     address = ip_address(target)
     if not address.is_loopback or address.version != 4:
@@ -56,11 +97,16 @@ def check_ports(target: str, ports: list[int]) -> dict:
         except OSError:
             status = "error"
 
-        results.append({
+        item = {
             "port": port,
             "status": status,
             "service_hint": identify_service(port),
-        })
+        }
+
+        if status == "open":
+            item.update(identify_http(target, port))
+
+        results.append(item)
 
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),
